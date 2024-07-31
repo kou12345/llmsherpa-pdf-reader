@@ -3,7 +3,7 @@ from llmsherpa.readers import LayoutPDFReader
 
 # 定数
 LLMSHERPA_API_URL = "http://localhost:5010/api/parseDocument?renderFormat=all"
-PDF_PATH = "/Users/kou12345/Downloads/データ指向アプリケーションデザイン.pdf"
+PDF_PATH = ""
 OUTPUT_DIR = "output"
 
 

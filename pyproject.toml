@@ -9,6 +9,7 @@ dependencies = [
     "llmsherpa>=0.1.4",
     "fastapi[standard]>=0.112.2",
     "supabase>=2.7.3",
+    "sqlalchemy>=2.0.32",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"

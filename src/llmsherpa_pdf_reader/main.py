@@ -3,7 +3,7 @@ from llmsherpa.readers import LayoutPDFReader
 
 # 定数
 LLMSHERPA_API_URL = "http://localhost:5010/api/parseDocument?renderFormat=all"
-PDF_PATH = ""
+PDF_PATH = "/Users/kou12345/Downloads/データ指向アプリケーションデザイン.pdf"
 OUTPUT_DIR = "output"
 
 
@@ -44,6 +44,13 @@ def main():
     # セクションとテーブルを抽出
     sections = doc.sections()
     tables = doc.tables()
+
+    chunks = doc.chunks()
+    all_chunk_text = ""
+    for chunk in chunks:
+        all_chunk_text += "Chunk:\n" + chunk.to_text() + "\n-----\n"
+
+    write_to_file("all_chunk_text.txt", all_chunk_text)
 
     # セクションを処理
     text_output, html_output, context_text_output = process_sections(sections)

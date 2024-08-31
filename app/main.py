@@ -28,7 +28,6 @@ async def index(request: Request):
 
 @app.post("/upload", response_class=HTMLResponse)
 async def upload(request: Request):
-    print("/upload リクエストが来た!!!")
     try:
         form = await request.form()
         file = form["file"]
@@ -42,7 +41,7 @@ async def upload(request: Request):
         sections = doc.sections()
 
         sections_content = [
-            section.to_text(include_children=True, recurse=True) for section in sections
+            section.to_html(include_children=True, recurse=True) for section in sections
         ]
 
         # file.filenameから.pdfを取り除いたものをtitleとして使う
@@ -83,7 +82,6 @@ async def upload(request: Request):
 
 @app.get("/search", response_class=HTMLResponse)
 async def search(request: Request, keyword: str = Query(...)):
-    print("/search リクエストが来た!!!")
     logger.info(f"Searching for: {keyword}")
     print(keyword)
 
@@ -113,6 +111,21 @@ async def search(request: Request, keyword: str = Query(...)):
         return templates.TemplateResponse(
             "search_results.html",
             {"request": request, "results": results, "keyword": keyword},
+        )
+    finally:
+        db.close()
+
+
+@app.get("/page/{page_id}", response_class=HTMLResponse)
+async def get_page_detail(request: Request, page_id: int):
+    db: Session = next(get_db())
+    try:
+        page = db.query(Page).filter(Page.id == page_id).first()
+        if page is None:
+            raise HTTPException(status_code=404, detail="Page not found")
+
+        return templates.TemplateResponse(
+            "page_detail.html", {"request": request, "page": page}
         )
     finally:
         db.close()

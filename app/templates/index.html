@@ -11,8 +11,20 @@
     ></script>
   </head>
   <body>
+    <!-- 検索 form -->
     <form
-      id="form"
+      id="search-form"
+      hx-get="/search"
+      hx-target="#sections"
+      hx-swap="outerHTML"
+    >
+      <input type="text" name="keyword" />
+      <button>Search</button>
+    </form>
+
+    <!-- upload form -->
+    <form
+      id="upload-form"
       hx-encoding="multipart/form-data"
       hx-post="/upload"
       hx-target="#sections"
@@ -21,9 +33,11 @@
       <button>Upload</button>
       <progress id="progress" value="0" max="100"></progress>
     </form>
+
+    <!-- uploadしたpdfのテキストを表示するエリア -->
     <div id="sections"></div>
     <script>
-      htmx.on("#form", "htmx:xhr:progress", function (evt) {
+      htmx.on("#upload-form", "htmx:xhr:progress", function (evt) {
         htmx
           .find("#progress")
           .setAttribute("value", (evt.detail.loaded / evt.detail.total) * 100);

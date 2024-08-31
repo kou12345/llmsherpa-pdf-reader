@@ -1,7 +1,12 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from llmsherpa.readers import LayoutPDFReader
+
+from database import get_db
+from model.book import Book
+from model.page import Page
+from sqlalchemy.orm import Session
 
 # TODO env
 LLMSHERPA_API_URL = "http://nlm-ingestor:5001/api/parseDocument?renderFormat=all"
@@ -19,25 +24,52 @@ async def index(request: Request):
 
 @app.post("/upload", response_class=HTMLResponse)
 async def upload(request: Request):
-    form = await request.form()
-    file = form["file"]
-    print(file.filename)
+    try:
+        form = await request.form()
+        file = form["file"]
+        print(file.filename)
 
-    contents = await file.read()
+        contents = await file.read()
 
-    pdf_reader = LayoutPDFReader(LLMSHERPA_API_URL)
-    doc = pdf_reader.read_pdf(path_or_url=file.filename, contents=contents)
+        pdf_reader = LayoutPDFReader(LLMSHERPA_API_URL)
+        doc = pdf_reader.read_pdf(path_or_url=file.filename, contents=contents)
 
-    sections = doc.sections()
+        sections = doc.sections()
 
-    sections_content = [
-        section.to_text(include_children=True, recurse=True) for section in sections
-    ]
+        sections_content = [
+            section.to_text(include_children=True, recurse=True) for section in sections
+        ]
 
-    # TODO sections_contentをDBに保存する
+        # file.filenameから.pdfを取り除いたものをtitleとして使う
+        title = file.filename.split(".")[0]
+        # TODO titleをサニタイズする
 
-    return templates.TemplateResponse(
-        request=request,
-        name="sections.html",
-        context={"sections": sections_content},
-    )
+        # データベースセッションの取得と管理
+        db: Session = next(get_db())
+        try:
+            # BookをDBに保存
+            book = Book(title=title)
+            db.add(book)
+            db.flush()  # IDを取得するためにflush
+
+             # PageをDBに保存
+            pages = [Page(book_id=book.id, content=section, page_number=i) 
+                     for i, section in enumerate(sections_content)]
+            db.bulk_save_objects(pages)
+
+            db.commit()
+
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+
+        return templates.TemplateResponse(
+            request=request,
+            name="sections.html",
+            context={"sections": sections_content},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

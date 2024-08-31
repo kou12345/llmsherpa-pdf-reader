@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import ForeignKey, Index, Text
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -17,3 +17,7 @@ class Page(Base, TimestampMixin):
     page_number: Mapped[int] = mapped_column(nullable=False)
     content: Mapped[str] = mapped_column(Text)
     book: Mapped["Book"] = relationship(back_populates="pages")  # type: ignore
+
+    __table_args__ = (
+        Index("ix_pages_content_pgroonga", "content", postgresql_using="pgroonga"),
+    )

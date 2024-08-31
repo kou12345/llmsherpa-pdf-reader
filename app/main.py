@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request
+import logging
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from llmsherpa.readers import LayoutPDFReader
@@ -7,9 +8,12 @@ from database import get_db
 from model.book import Book
 from model.page import Page
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 # TODO env
 LLMSHERPA_API_URL = "http://nlm-ingestor:5001/api/parseDocument?renderFormat=all"
+
+logger = logging.getLogger("uvicorn")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -24,6 +28,7 @@ async def index(request: Request):
 
 @app.post("/upload", response_class=HTMLResponse)
 async def upload(request: Request):
+    print("/upload リクエストが来た!!!")
     try:
         form = await request.form()
         file = form["file"]
@@ -52,9 +57,11 @@ async def upload(request: Request):
             db.add(book)
             db.flush()  # IDを取得するためにflush
 
-             # PageをDBに保存
-            pages = [Page(book_id=book.id, content=section, page_number=i) 
-                     for i, section in enumerate(sections_content)]
+            # PageをDBに保存
+            pages = [
+                Page(book_id=book.id, content=section, page_number=i)
+                for i, section in enumerate(sections_content)
+            ]
             db.bulk_save_objects(pages)
 
             db.commit()
@@ -65,7 +72,6 @@ async def upload(request: Request):
         finally:
             db.close()
 
-
         return templates.TemplateResponse(
             request=request,
             name="sections.html",
@@ -73,3 +79,40 @@ async def upload(request: Request):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/search", response_class=HTMLResponse)
+async def search(request: Request, keyword: str = Query(...)):
+    print("/search リクエストが来た!!!")
+    logger.info(f"Searching for: {keyword}")
+    print(keyword)
+
+    db = next(get_db())
+    try:
+        # PGroongaを使用した全文検索クエリ
+        query = text(
+            """
+        SELECT p.id, p.content, p.page_number, b.title
+        FROM pages p
+        JOIN books b ON p.book_id = b.id
+        WHERE p.content &@ :keyword
+        LIMIT 10;
+        """
+        )
+
+        # クエリをログに出力
+        logger.info(f"Executing query: {query}")
+        logger.info(f"With parameters: keyword={keyword}")
+
+        results = db.execute(query, {"keyword": keyword}).fetchall()
+
+        # 結果の数をログに出力
+        logger.info(f"Number of results: {len(results)}")
+
+        # 検索結果をテンプレートに渡す
+        return templates.TemplateResponse(
+            "search_results.html",
+            {"request": request, "results": results, "keyword": keyword},
+        )
+    finally:
+        db.close()

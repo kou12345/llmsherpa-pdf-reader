@@ -1,5 +1,8 @@
-{% for section in sections %}
-<div class="section">
-  <pre>{{ section }}</pre>
+<div class="bg-white p-6 rounded-lg shadow-md">
+  <h2 class="text-2xl font-bold mb-4">Uploaded PDF Content</h2>
+  {% for section in sections %}
+  <div class="section mb-4 pb-4 border-b last:border-b-0">
+    <pre class="whitespace-pre-wrap text-gray-700">{{ section }}</pre>
+  </div>
+  {% endfor %}
 </div>
-{% endfor %}
